@@ -52,6 +52,64 @@ async function run() {
     res.send("Hello world from server");
     });
 
+    app.get('/get-income-expense/:userId',async(req,res)=> {
+        const userId = req.params.userId;
+        const now = new Date();
+        const month = now.getMonth()+1; //1-12
+        const year = now.getFullYear();
+
+        const userData = await calculationCollection.findOne({userId});
+        // no user create a data;
+        if(!userData) {
+            const newData = {
+                userId,
+                amount: [{balance:0,expense:0,month,year}]
+            };
+            await calculationCollection.insertOne(newData);
+            return res.send(newData.amount[0]);
+        }
+
+        // check for current month
+
+        const currentMonth = userData.amount.find(a=> a.month === month && a.year === year);
+
+        //if found
+        if(currentMonth){
+            return res.send(currentMonth);
+        }
+
+        //if not found , calculate previos month remaining money if exists .. then 
+
+        const index = (userData?.amount?.length || 0) - 1;
+        // no previous
+        if(index<0){
+            const newMonth = {balance:0 ,expense:0, month,year};
+            await calculationCollection.updateOne(
+                {userId},
+                {$push:{ amount: newMonth}}
+            );
+            return res.send(newMonth);
+
+        }
+        // has previous month
+        else {
+            const lastEntry = userData?.amount[index];
+            const remaining = (lastEntry.balance || 0) - (lastEntry.expense||0);
+
+            const newMonth = {balance: remaining ,expense:0, month,year};
+            await calculationCollection.updateOne(
+                {userId},
+                {$push:{ amount: newMonth}}
+            );
+            return res.send(newMonth);
+
+        }
+
+
+
+
+    });
+
 
     //add user to database 
 
@@ -201,7 +259,7 @@ async function run() {
             const calculate = await calculationCollection.findOne({userId});
 
             const now = new Date();
-            const month = now.getMonth()+1; // 0–11
+            const month = now.getMonth()+1; // 1–12
             const year = now.getFullYear();
 
 
@@ -282,6 +340,8 @@ async function run() {
 
 
     });
+
+
     
     
     app.listen(port,() => {
