@@ -40,7 +40,7 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    // Connect the client to the server	(optional starting in v4.7)
+    // Connect the client to the server
     await client.connect();
     const usersCollection = client.db('FinoteDB').collection('users');
     const calculationCollection = client.db('FinoteDB').collection('calculations');
@@ -143,11 +143,12 @@ async function run() {
 
     app.post('/add-income/:userId', async(req,res) => {
         const userId = req.params.userId;
-        const {name , amount} = req.body;
+        const {name , amount,color} = req.body;
 
         const incomeData = {
             name,
             amount,
+            color,
             createdAt : new Date(),
         }
 
@@ -244,12 +245,13 @@ async function run() {
     app.post('/add-expense/:userId', async(req,res) => {
         const userId = req.params.userId;
 
-        const {name,amount,description} = req.body;
+        const {name,amount,description,color} = req.body;
 
         const data = {
             name,
             amount,
             description,
+            color,
             date: new Date()
         }
 
