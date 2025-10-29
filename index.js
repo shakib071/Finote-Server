@@ -46,11 +46,14 @@ async function run() {
     const calculationCollection = client.db('FinoteDB').collection('calculations');
     const incomeHistoryCollection = client.db('FinoteDB').collection('incomeHistorys');
     const expenseHistoryCollection = client.db('FinoteDB').collection('expenseHistorys');
+    const categoryCollection = client.db('FinoteDB').collection('category');
 
 
     app.get('/',(req,res)=> {
     res.send("Hello world from server");
     });
+
+    //get income expense
 
     app.get('/get-income-expense/:userId',async(req,res)=> {
         const userId = req.params.userId;
@@ -110,9 +113,9 @@ async function run() {
 
     });
 
-    //get expense history for this month
+    //get top 10 expense category history for this month
 
-    app.get('/get-expense-history/:userId',async(req,res)=> {
+    app.get('/get-top10-expense-history/:userId',async(req,res)=> {
         const userId = req.params.userId;
         const today = new Date();
         const currentMonth = today.getMonth();
@@ -126,8 +129,22 @@ async function run() {
                 const currentMonthExpenses = expenses.filter(expense => {
                     const date = new Date(expense.date);
                     return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+                })
+
+                const categoryTotals = {};
+                currentMonthExpenses.forEach(expense => {
+                    const category = expense.category || 'Uncategorized';
+                    const amount = parseInt(expense.amount) || 0;
+                    const fill = expense.fill || '#000';
+
+                    if(!categoryTotals[category]){
+                        categoryTotals[category] = {total:0,fill};
+                    }
+                    categoryTotals[category].total += amount;
                 });
-                res.send(currentMonthExpenses);
+
+                const sortedCategories = Object.entries(categoryTotals).map(([category, {total,fill}]) => ({category,total,fill})).sort((a,b) => b.total - a.total).slice(0,10);
+                res.send(sortedCategories);
             }
             else{
                 res.send([]);
@@ -136,6 +153,35 @@ async function run() {
         }
         catch{
             res.status(500).send({message: 'server error'});
+        }
+    });
+
+
+    //get the categories of user 
+
+    app.get('/get-category/:userId',async(req,res)=> {
+        const userId = req.params.userId;
+
+        
+        try{
+            const existingUser = await categoryCollection.findOne({userId});
+            if(existingUser){
+                const categories = existingUser.categories;
+                res.send(categories);
+            }
+            else{
+                
+                await categoryCollection.insertOne({
+                    userId,
+                    categories: ['Food','Cloth','Grocery'],
+                })
+
+                res.send(['Food','Cloth','Grocery']);
+            }
+        }
+
+        catch{
+
         }
     });
 
@@ -176,8 +222,8 @@ async function run() {
 
         const incomeData = {
             name,
-            amount,
-            color,
+            amount:parseInt(amount),
+            fill:color,
             createdAt : new Date(),
         }
 
@@ -274,13 +320,14 @@ async function run() {
     app.post('/add-expense/:userId', async(req,res) => {
         const userId = req.params.userId;
 
-        const {name,amount,description,color} = req.body;
+        const {name,amount,description,color,category} = req.body;
 
         const data = {
             name,
-            amount,
+            amount:parseInt(amount),
             description,
-            color,
+            category,
+            fill:color,
             date: new Date()
         }
 
@@ -370,6 +417,37 @@ async function run() {
         }
 
 
+    });
+
+
+    //add category 
+    
+    app.post('/add-category/:userId',async(req,res)=> {
+        const userId = req.params.userId;
+        const {category} = req.body;
+
+        try{
+            const existingUser = await categoryCollection.findOne({userId});
+            if(existingUser){
+                const updateCategory = await categoryCollection.findOneAndUpdate(
+                    {userId},
+                    {$push: {categories: category}},
+                    {new:true}
+                )
+                res.send(updateCategory);
+            }
+            else{
+                const newCategory = await categoryCollection.insertOne({
+                    userId,
+                    categories: [category],
+                })
+
+                res.send(newCategory);
+            }
+        }
+        catch{
+            res.status(500).send({ message: "Internal Server Error" });
+        }
     });
 
 
