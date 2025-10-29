@@ -110,6 +110,35 @@ async function run() {
 
     });
 
+    //get expense history for this month
+
+    app.get('/get-expense-history/:userId',async(req,res)=> {
+        const userId = req.params.userId;
+        const today = new Date();
+        const currentMonth = today.getMonth();
+        const currentYear = today.getFullYear();
+
+        try{
+            const userInExpenseHistory = await expenseHistoryCollection.findOne({userId});
+
+            if(userInExpenseHistory){
+                const expenses = userInExpenseHistory.expenseHistory || [];
+                const currentMonthExpenses = expenses.filter(expense => {
+                    const date = new Date(expense.date);
+                    return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+                });
+                res.send(currentMonthExpenses);
+            }
+            else{
+                res.send([]);
+            }
+
+        }
+        catch{
+            res.status(500).send({message: 'server error'});
+        }
+    });
+
 
     //add user to database 
 
@@ -157,7 +186,7 @@ async function run() {
             const calculate = await calculationCollection.findOne({userId});
 
             const now = new Date();
-            const month = now.getMonth()+1; // 0–11
+            const month = now.getMonth()+1; // 1–12
             const year = now.getFullYear();
 
 
