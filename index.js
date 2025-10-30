@@ -156,6 +156,29 @@ async function run() {
         }
     });
 
+    //get daily expenses this month with query for all or 10 expenses with pagination
+
+    // app.get('/get-daily-expense/:userId',async(req,res)=> {
+    //     const userId = req.params.userId;
+    //     const {count} = req.query;
+
+    //     // if -1 then get all data else get the specific number of data
+    //     const dataCount = parseInt(count);
+    //     try{
+    //         const userData = await expenseHistoryCollection.findOne({userId});
+
+    //         if(userData){
+    //             const expenseData = 
+    //         }
+    //         else{
+    //             res.send([]);
+    //         }
+    //     }
+    //     catch{
+
+    //     }
+    // });
+
 
     //get the categories of user 
 
@@ -183,6 +206,68 @@ async function run() {
         catch{
 
         }
+    });
+
+
+    //get daily expense .. current month and previos month
+
+    app.get('/get-daily-expense/:userId', async(req,res)=>{
+
+        const userId = req.params.userId;
+
+        try{
+            const userData = await expenseHistoryCollection.findOne({userId});
+            const expenses = userData?.expenseHistory || [];
+
+            const now = new Date();
+            const currentMonth = now.getMonth(); // 0 index 
+            const currentYear = now.getFullYear();
+            const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+            const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+
+            // helper → get daily totals for given month/year
+            const getDailyTotals = (month, year) => {
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const dailyTotals = Array.from({ length: daysInMonth }, (_, i) => ({
+                fullDate: `${year}-${String(month + 1).padStart(2, "0")}-${String(
+                i + 1
+                ).padStart(2, "0")}`,
+                total: 0,
+            }));
+
+            // sum expenses by day
+            expenses.forEach((exp) => {
+                const d = new Date(exp.date);
+                if (d.getMonth() === month && d.getFullYear() === year) {
+                const day = d.getDate();
+                dailyTotals[day - 1].total += Number(exp.amount) || 0;
+                }
+            });
+
+            return dailyTotals;
+            };
+
+            // get current and previous month data
+            const currentMonthData = getDailyTotals(currentMonth, currentYear);
+            const prevMonthData = getDailyTotals(prevMonth, prevYear);
+
+            // align both months to same number of days (for chart or comparison)
+            const maxDays = Math.max(currentMonthData.length, prevMonthData.length);
+            const result = Array.from({ length: maxDays }, (_, i) => ({
+            date: currentMonthData[i]?.fullDate || `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(i + 1).padStart(2, "0")}`,
+            currentMonth: currentMonthData[i]?.total || 0,
+            prevMonth: prevMonthData[i]?.total || 0,
+            }));
+
+            res.send(result);
+
+        }
+
+        catch{
+            res.status(500).send({ message: "Server error" });
+        }
+
+
     });
 
 
