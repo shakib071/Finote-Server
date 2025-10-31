@@ -271,6 +271,121 @@ async function run() {
     });
 
 
+    //get expense data  by month 
+
+    app.get('/get-expense-data/:userId',async(req,res)=>{
+        const userId = req.params.userId;
+        const limit = parseInt(req.query.limit)||10;
+        const page = parseInt(req.query.page)||0;
+        const month = parseInt(req.query.month);
+        const year = parseInt(req.query.year);
+        const search = req.query.search?.toLowerCase() || "";
+
+
+        try{
+            const skip = page * limit;
+            const userData = await expenseHistoryCollection.findOne({userId});
+
+            if(!userData || !userData.expenseHistory){
+                return res.send({pagination:[],count:0});
+            };
+
+            //filter expenses by month and year 
+
+            let filtered = userData.expenseHistory.filter((expense)=> {
+                const date = new Date(expense.date);
+                return (
+                    date.getMonth() + 1 === month && date.getFullYear() === year
+                );
+            });
+
+            //apply search 
+
+            if(search){
+                filtered = filtered.filter((expense)=>{
+                    const name = expense?.name?.toLowerCase() || "";
+                    const category = expense?.category?.toLowerCase() || "";
+                    const description = expense?.description?.toLowerCase() || "";
+                    return (
+                        name.includes(search) ||
+                        category.includes(search) ||
+                        description.includes(search)
+                    );
+                });
+            }
+
+
+             // Sort by date (latest first)
+            const sorted = filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            //apply pagination 
+            const pagination = sorted.slice(skip,skip+limit);
+            res.send({pagination,count:pagination.length});
+        }
+
+        catch{
+            res.status(500).send({ message: 'Server error' });
+        }
+
+    });
+
+    //get income data by month
+
+    app.get('/get-income-data/:userId',async(req,res)=>{
+        const userId = req.params.userId;
+        const limit = parseInt(req.query.limit)||10;
+        const page = parseInt(req.query.page)||0;
+        const month = parseInt(req.query.month);
+        const year = parseInt(req.query.year);
+        const search = req.query.search?.toLowerCase() || "";
+
+
+        try{
+            const skip = page * limit;
+            const userData = await incomeHistoryCollection.findOne({userId});
+
+            if(!userData || !userData.incomeHistory){
+                return res.send({pagination:[],count:0});
+            };
+
+            //filter income by month and year 
+
+            let filtered = userData.incomeHistory.filter((income)=> {
+                const date = new Date(income.createdAt);
+                return (
+                    date.getMonth() + 1 === month && date.getFullYear() === year
+                );
+            });
+
+            //apply search 
+
+            if(search){
+                filtered = filtered.filter((income)=>{
+                    const name = income?.name?.toLowerCase() || "";
+
+                    return (
+                        name.includes(search)
+                    );
+                });
+            }
+
+
+             // Sort by date (latest first)
+            const sorted = filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            //apply pagination 
+            const pagination = sorted.slice(skip,skip+limit);
+            res.send({pagination,count:pagination.length});
+        }
+
+        catch{
+            res.status(500).send({ message: 'Server error' });
+        }
+
+    });
+
+
+
     //add user to database 
 
     app.post('/users',async(req,res)=> {
