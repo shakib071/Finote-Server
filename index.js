@@ -392,6 +392,63 @@ async function run() {
 
     });
 
+    //get expense summury of last 6 month 
+
+    app.get('/get-expense-summary/:userId',async(req,res)=> {
+        const userId = req.params.userId;
+
+        try{
+            const now = new Date();
+            let currentMonth = now.getMonth() + 1;
+            let currentYear = now.getFullYear();
+
+            // Array of last 6 months (current + previous 5)
+            const months = [];
+            for (let i = 0; i < 6; i++) {
+                months.unshift({ month: currentMonth, year: currentYear });
+                currentMonth--;
+                if (currentMonth === 0) {
+                    currentMonth = 12;
+                    currentYear--;
+                }
+            }
+
+            // Month names 
+            const monthNames = [
+                "January", "February", "March", "April", "May", "June",
+                "July", "August", "September", "October", "November", "December"
+                ];
+
+            
+            const userData = await calculationCollection.findOne({ userId });
+
+            if(!userData || !Array.isArray(userData?.amount)){
+                const result = months.map((m) => ({
+                    month: monthNames[m.month - 1],
+                    expense: 0,
+                }))
+                return res.send(result);
+            }
+
+            //if user and data is available 
+
+            const result = months.map(({month,year})=> {
+                const match = userData?.amount.find(
+                    (item) => item.month === month && item.year === year
+                );
+                return {
+                    month: monthNames[month-1],
+                    expense:match ? match.expense : 0,
+                };
+            });
+            res.send(result);
+        }
+
+        catch{
+            res.status(500).send({ message: "Internal server error" });
+        }
+    });
+
 
 
     //add user to database 
