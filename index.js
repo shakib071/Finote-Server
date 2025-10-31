@@ -120,6 +120,7 @@ async function run() {
         const today = new Date();
         const currentMonth = today.getMonth();
         const currentYear = today.getFullYear();
+        const number = parseInt(req.query.number) || 10;
 
         try{
             const userInExpenseHistory = await expenseHistoryCollection.findOne({userId});
@@ -143,8 +144,15 @@ async function run() {
                     categoryTotals[category].total += amount;
                 });
 
-                const sortedCategories = Object.entries(categoryTotals).map(([category, {total,fill}]) => ({category,total,fill})).sort((a,b) => b.total - a.total).slice(0,10);
-                res.send(sortedCategories);
+                if(number===-1){
+                    const sortedCategories = Object.entries(categoryTotals).map(([category, {total,fill}]) => ({category,total,fill})).sort((a,b) => b.total - a.total);
+                    res.send(sortedCategories);
+                }
+                else{
+                    const sortedCategories = Object.entries(categoryTotals).map(([category, {total,fill}]) => ({category,total,fill})).sort((a,b) => b.total - a.total).slice(0,number);
+                    res.send(sortedCategories);
+                }
+                
             }
             else{
                 res.send([]);
