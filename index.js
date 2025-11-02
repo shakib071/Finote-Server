@@ -328,7 +328,7 @@ async function run() {
 
             //apply pagination 
             const pagination = sorted.slice(skip,skip+limit);
-            res.send({pagination,count:pagination.length});
+            res.send({pagination,count:sorted.length});
         }
 
         catch{
@@ -383,7 +383,7 @@ async function run() {
 
             //apply pagination 
             const pagination = sorted.slice(skip,skip+limit);
-            res.send({pagination,count:pagination.length});
+            res.send({pagination,count:sorted.length});
         }
 
         catch{
